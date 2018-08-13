@@ -12,7 +12,7 @@
 
         //Check if getUserMedia is available
         if (!Modernizr.getusermedia) {
-            deferred.reject('Your browser doesn\'t support getUserMedia (according to Modernizr).');
+            deferred.reject('浏览器不支持 getUserMedia (根据 Modernizr).');
         }
 
         //Check if WebGL is available
@@ -21,117 +21,59 @@
                 //setup glfx.js
                 fxCanvas = fx.canvas();
             } catch (e) {
-                deferred.reject('Sorry, glfx.js failed to initialize. WebGL issues?');
+                deferred.reject('抱歉, glfx.js 初始化失败. WebGL 问题?');
             }
         } else {
-            deferred.reject('Your browser doesn\'t support WebGL (according to Modernizr).');
+            deferred.reject('浏览器不支持 WebGL (根据 Modernizr).');
         }
 
         deferred.resolve();
 
         return deferred.promise();
     }
-
-    function searchForRearCamera() {
-        var deferred = new $.Deferred();
-
-        //MediaStreamTrack.getSources seams to be supported only by Chrome
-        if (MediaStreamTrack && MediaStreamTrack.getSources) {
-            MediaStreamTrack.getSources(function (sources) {
-                var rearCameraIds = sources.filter(function (source) {
-                    return (source.kind === 'video' && source.facing === 'environment');
-                }).map(function (source) {
-                    return source.id;
-                });
-
-                if (rearCameraIds.length) {
-                    deferred.resolve(rearCameraIds[0]);
-                } else {
-                    deferred.resolve(null);
-                }
-            });
-        } else {
-            deferred.resolve(null);
-        }
-
-        return deferred.promise();
-    }
-
-    function setupVideo(rearCameraId) {
-        var deferred = new $.Deferred();
-        var getUserMedia = Modernizr.prefixed('getUserMedia', navigator);
-        var videoSettings = {
-            video: {
-                optional: [
-                    {
-                        width: {min: pictureWidth}
-                    },
-                    {
-                        height: {min: pictureHeight}
-                    }
-                ]
-            }
-        };
-
-        //if rear camera is available - use it
-        if (rearCameraId) {
-            videoSettings.video.optional.push({
-                sourceId: rearCameraId
-            });
-        }
-
-        getUserMedia(videoSettings, function (stream) {
-            //Setup the video stream
-            video.src = window.URL.createObjectURL(stream);
-
-            window.stream = stream;
-
-            video.addEventListener("loadedmetadata", function (e) {
-                //get video width and height as it might be different than we requested
-                pictureWidth = this.videoWidth;
-                pictureHeight = this.videoHeight;
-
-                if (!pictureWidth && !pictureHeight) {
-                    //firefox fails to deliver info about video size on time (issue #926753), we have to wait
-                    var waitingForSize = setInterval(function () {
-                        if (video.videoWidth && video.videoHeight) {
-                            pictureWidth = video.videoWidth;
-                            pictureHeight = video.videoHeight;
-
-                            clearInterval(waitingForSize);
-                            deferred.resolve();
-                        }
-                    }, 100);
-                } else {
-                    deferred.resolve();
-                }
-            }, false);
-        }, function () {
-            deferred.reject('There is no access to your camera, have you denied it?');
-        });
-
-        return deferred.promise();
-    }
+	
+	function filechange(event){
+		var files = event.target.files;
+		var file;
+		if (files && files.length > 0) {
+			// 获取目前上传的文件
+			file = files[0];// 文件大小校验的动作
+			if(file.size > 1024 * 1024 * 2) {
+				alert('图片大小不能超过 2MB!');
+				return false;
+			}
+			// 获取 window 的 URL 工具
+			var URL = window.URL || window.webkitURL;
+			// 通过 file 生成目标 url
+			var imgURL = URL.createObjectURL(file);
+            var canvas = document.querySelector('#step1 canvas');
+			var cxt = canvas.getContext("2d");
+			var img = new Image();
+			img.src = imgURL;
+			cxt.drawImage(img, 0, 0);
+			//用attr将img的src属性改成获得的url
+			$("#img-change").attr("src",imgURL);
+			// 使用下面这句可以在内存中释放对此 url 的伺服，跑了之后那个 URL 就无效了
+			// URL.revokeObjectURL(imgURL);
+			step2();
+			changeStep(2);
+		}
+	}
+	
+	$("#img-change").click(function () {
+		$("#file").click();
+	});
+	
+	$("#img-choose").click(function () {
+		$("#file").click();
+	});
 
     function step1() {
-        checkRequirements()
-            .then(searchForRearCamera)
-            .then(setupVideo)
-            .done(function () {
-                //Enable the 'take picture' button
-                $('#takePicture').removeAttr('disabled');
-                //Hide the 'enable the camera' info
-                $('#step1 figure').removeClass('not-ready');
-            })
-            .fail(function (error) {
-                showError(error);
-            });
     }
 
     function step2() {
-        var canvas = document.querySelector('#step2 canvas');
+        var canvas = document.querySelector('#step1 canvas');
         var img = document.querySelector('#step2 img');
-
         //setup canvas
         canvas.width = pictureWidth;
         canvas.height = pictureHeight;
@@ -153,7 +95,7 @@
         window.fxCanvas = fxCanvas;
 
         $(img)
-            //setup the crop utility
+        //setup the crop utility
             .one('load', function () {
                 if (!$(img).data().Jcrop) {
                     $(img).Jcrop({
@@ -245,9 +187,7 @@
         $('.jcrop-holder img').attr('src', fxCanvas.toDataURL());
     });
 
-    $('#takePicture').click(function () {
-        step2();
-        changeStep(2);
+    $('#img-choose').click(function () {
     });
 
     $('#adjust').click(function () {
